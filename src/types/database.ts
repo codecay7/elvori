@@ -270,6 +270,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      restore_document_version: {
+        Args: { p_project_id: string; p_version_id: string }
+        Returns: Json
+      }
       save_document_section: {
         Args: { p_content: string; p_project_id: string; p_section_id: string }
         Returns: Json
