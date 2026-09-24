@@ -13,17 +13,9 @@ type Props = {
 }
 
 const updateSectionSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1)
-    .max(SECURITY.MAX_SECTION_NAME_LENGTH)
-    .optional(),
   content: z
     .string()
-    .max(SECURITY.MAX_LATEX_SIZE_BYTES)
-    .optional(),
-  position: z.number().int().min(0).max(1000).optional(),
+    .max(SECURITY.MAX_LATEX_SIZE_BYTES),
 })
 
 export async function PATCH(
@@ -35,6 +27,7 @@ export async function PATCH(
     const { projectId, sectionId } = await params
 
     const body = await request.json()
+
     const result = updateSectionSchema.safeParse(body)
 
     if (!result.success) {
@@ -46,40 +39,69 @@ export async function PATCH(
 
     const supabase = await createClient()
 
-    const { data: project } = await supabase
-      .from('projects')
-      .select('id')
-      .eq('id', projectId)
-      .eq('owner_id', user.id)
-      .maybeSingle()
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found.' },
-        { status: 404 },
-      )
-    }
-
-    const { data, error } = await supabase
-      .from('document_sections')
-      .update(result.data)
-      .eq('id', sectionId)
-      .eq('project_id', projectId)
-      .select(
-        'id, project_id, name, slug, content, position, created_at, updated_at',
-      )
-      .single()
+    /*
+     * The database function performs:
+     *
+     * authentication
+     * ownership verification
+     * section verification
+     * section update
+     * complete snapshot
+     * version creation
+     *
+     * inside one transaction.
+     */
+    const { data, error } = await supabase.rpc(
+      'save_document_section',
+      {
+        p_project_id: projectId,
+        p_section_id: sectionId,
+        p_content: result.data.content,
+      },
+    )
 
     if (error) {
-      console.error('Failed to update document section:', error.message)
+      console.error(
+        'Failed to save document section:',
+        error.message,
+      )
+
+      if (error.message.includes('unauthorized')) {
+        return NextResponse.json(
+          { error: 'Unauthorized.' },
+          { status: 401 },
+        )
+      }
+
+      if (error.message.includes('project_not_found')) {
+        return NextResponse.json(
+          { error: 'Project not found.' },
+          { status: 404 },
+        )
+      }
+
+      if (error.message.includes('section_not_found')) {
+        return NextResponse.json(
+          { error: 'Section not found.' },
+          { status: 404 },
+        )
+      }
 
       return NextResponse.json(
-        { error: 'Unable to save document section.' },
+        { error: 'Unable to save document.' },
         { status: 500 },
       )
     }
 
-    return NextResponse.json({ data })
+    /*
+     * Prevent unused-variable lint issues while keeping
+     * authentication explicitly enforced at the API layer.
+     */
+    void user
+
+    return NextResponse.json({
+      data,
+    })
   } catch (error) {
     return handleApiError(error)
   }
