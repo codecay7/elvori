@@ -270,6 +270,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_project_with_initial_section: {
+        Args: { p_content: string; p_description: string; p_name: string }
+        Returns: Json
+      }
       restore_document_version: {
         Args: { p_project_id: string; p_version_id: string }
         Returns: Json

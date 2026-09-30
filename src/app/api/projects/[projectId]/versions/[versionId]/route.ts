@@ -90,10 +90,10 @@ export async function GET(
     return NextResponse.json({
       data: {
         id: version.id,
-        projectId: version.project_id,
-        versionNumber: version.version_number,
-        createdBy: version.created_by,
-        createdAt: version.created_at,
+        project_id: version.project_id,
+        version_number: version.version_number,
+        created_by: version.created_by,
+        created_at: version.created_at,
         snapshot: snapshot.data,
       },
     })

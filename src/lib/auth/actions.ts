@@ -65,9 +65,12 @@ export async function signIn(
 
   const supabase = await createAuthClient()
 
-  const { error } = await supabase.auth.signInWithPassword(result.data)
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: result.data.email,
+    password: result.data.password,
+  })
 
-  if (error) {
+  if (error || !data.session) {
     return {
       ...initialState,
       error: 'Unable to sign in with those credentials.',

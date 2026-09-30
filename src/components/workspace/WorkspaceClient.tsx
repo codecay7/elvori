@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { VersionHistory } from '@/components/workspace/VersionHistory'
+import { DEFAULT_LATEX } from '@/lib/documents/default-latex'
 
 type Project = {
   id: string
@@ -26,41 +28,6 @@ type Props = {
   initialSections: Section[]
 }
 
-const DEFAULT_LATEX = `\\documentclass[11pt,a4paper]{article}
-
-\\usepackage[margin=1in]{geometry}
-\\usepackage{hyperref}
-\\usepackage{enumitem}
-
-\\begin{document}
-
-\\begin{center}
-    {\\LARGE \\textbf{Your Name}}\\\\
-    \\vspace{4pt}
-    Software Engineer
-\\end{center}
-
-\\section*{Experience}
-
-\\textbf{Software Engineer} \\hfill 2025 -- Present
-
-\\begin{itemize}[leftmargin=*]
-    \\item Built scalable web applications using modern technologies.
-    \\item Collaborated with engineering teams to deliver production features.
-\\end{itemize}
-
-\\section*{Projects}
-
-\\textbf{Elvori}
-\\begin{itemize}[leftmargin=*]
-    \\item Conversational LaTeX document workspace.
-\\end{itemize}
-
-\\section*{Education}
-
-Bachelor of Computer Applications
-
-\\end{document}`
 
 export default function WorkspaceClient({
   project,
@@ -91,6 +58,7 @@ export default function WorkspaceClient({
     'saved',
   )
   const [saveError, setSaveError] = useState('')
+  const [currentVersion, setCurrentVersion] = useState<number | undefined>()
 
   function selectSection(section: Section) {
     setActiveSection(section)
@@ -101,8 +69,8 @@ export default function WorkspaceClient({
   }
 
   async function handleSave() {
-    if (activeSection.id === 'draft') {
-      setSaveError('Create the document section before saving.')
+    if (!activeSection.id || activeSection.id === 'draft') {
+      setSaveError('No valid document section is selected.')
       setSaveState('error')
       return
     }
@@ -132,15 +100,19 @@ export default function WorkspaceClient({
         return
       }
 
-      setActiveSection(result.data)
       setSaveState('saved')
       setCompiled(false)
+      setCurrentVersion(result.data.version_number)
     } catch {
       setSaveError('Unable to save document.')
       setSaveState('error')
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleVersionRestored() {
+    window.location.reload()
   }
 
   function handleCompile() {
@@ -274,10 +246,18 @@ export default function WorkspaceClient({
             </button>
           </nav>
 
-          <div className="border-t border-neutral-200 p-4">
-            <p className="truncate text-xs text-neutral-400">
-              {project.description || 'LaTeX document'}
-            </p>
+          <div className="border-t border-neutral-200">
+            <VersionHistory
+              projectId={project.id}
+              currentVersion={currentVersion}
+              onRestored={handleVersionRestored}
+            />
+
+            <div className="border-t border-neutral-200 p-4">
+              <p className="truncate text-xs text-neutral-400">
+                {project.description || 'LaTeX document'}
+              </p>
+            </div>
           </div>
         </aside>
 
